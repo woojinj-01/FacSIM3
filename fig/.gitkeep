@@ -1,5 +1,6 @@
 __pycache__
-!results/.gitkeep
+analysis/__pycache__
+
 data/*
 !data/.gitkeep
 fig/*

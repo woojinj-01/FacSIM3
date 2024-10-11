@@ -21,7 +21,12 @@ from plot.trained_rank import decades_to_interval, convert_per_to_ranks
 from plot.rank_move import _interhistogram
 from analysis.geography import area_seoul, area_metro, area_capital, area_others
 
-iden_default = 'KR_ComputerScience'
+
+iden_cs = 'KR_ComputerScience'
+iden_bi = 'KR_Biology'
+iden_ph = 'KR_Physics'
+
+iden_default = iden_cs
 
 max_wapman_ranks = {"Biology": 201,
                     "ComputerScience": 216,
@@ -72,7 +77,7 @@ def lcurve_deg_field(iden=iden_default):
 
 def _lcurve_deg_field(ax, g, d):
 
-    def draw_lcurve(g_to_draw, c):
+    def draw_lcurve(g_to_draw, c, analyze=False):
     
         indegs = [deg[1] for deg in g_to_draw.in_degree()]
         outdegs = [deg[1] for deg in g_to_draw.out_degree()]
@@ -117,8 +122,46 @@ def _lcurve_deg_field(ax, g, d):
         ax.plot(xco, yco_out, alpha=pcfg.alpha, c=c, linewidth=6)
         ax.plot(xco, yco_in, alpha=pcfg.alpha, c=c, linewidth=6, linestyle='--')
 
+        if analyze:
+
+            print('[Out-degrees]')
+
+            for x, y in zip(xco, yco_out):
+
+                if y >= 0.8:
+                    print(f"{prev_x} of institutions produce {prev_y} of total faculty")
+                    print(f"{x} of institutions produce {y} of total faculty")
+
+                    grad = (y - prev_y) / (x - prev_x)
+
+                    x_estimate = (0.8 - prev_y) / grad + prev_x
+
+                    print(x_estimate)
+                    break
+
+                prev_x = x
+                prev_y = y
+
+            print('[In-degrees]')
+
+            for x, y in zip(xco, yco_in):
+
+                if y >= 0.8:
+                    print(f"{prev_x} of institutions hire {prev_y} of total faculty")
+                    print(f"{x} of institutions hire {y} of total faculty")
+
+                    grad = (y - prev_y) / (x - prev_x)
+
+                    x_estimate = (0.8 - prev_y) / grad + prev_x
+
+                    print(x_estimate)
+                    break
+
+                prev_x = x
+                prev_y = y
+
         return gini_in, gini_out
-    
+
     gini_g_in, gini_g_out = draw_lcurve(g, pcfg.color_ut)
     gini_d_in, gini_d_out = draw_lcurve(d, pcfg.color_kt)
 
@@ -172,6 +215,8 @@ def fac_type():
         kr = stat["KR"] / stat["Total"]
         us = stat["US"] / stat["Total"]
         others = stat["Others"] / stat["Total"]
+
+        print(iden, us)
 
         ax.bar(field, us, color=pcfg.color_ut, alpha=pcfg.alpha, edgecolor='black', linewidth=2)
         ax.bar(field, others, color=pcfg.color_et, bottom=us, alpha=pcfg.alpha, edgecolor='black', linewidth=2)
@@ -535,6 +580,9 @@ def _mobility_kr_us_both(ax, g, normalize):
 
     data_up = [ktkp_up, utkp_up, ktup_up]
     data_do = [ktkp_do, utkp_do, ktup_do]
+
+    for c, data in zip(category, data_up):
+        print(c, data)
 
     ax.tick_params(axis='x', which='major', labelsize=pcfg.small_tick_size)
     ax.tick_params(axis='x', labelrotation=30)
@@ -1540,7 +1588,7 @@ def _self_hires_v_rank_grouped(ax, g, annotate_bs):
 
     ranges = divide_by_groups(max_rank, num_bins)
 
-    fractions = {i: [0, 0, 0] for i in range(len(ranges))}
+    fractions = {i: [0, 0, 0, 0] for i in range(len(ranges))}
 
     for src_id, dst_id, data in g.edges(data=True):
 
@@ -1551,6 +1599,7 @@ def _self_hires_v_rank_grouped(ax, g, annotate_bs):
 
         is_self_hire = 0
         is_bs_self_hire = 0
+        is_phd_self_hire = 0
 
         bs_id = data['bs_inst_id']
         
@@ -1561,23 +1610,38 @@ def _self_hires_v_rank_grouped(ax, g, annotate_bs):
 
         elif src_id == dst_id:
             is_self_hire = 1
+            is_phd_self_hire = 1
 
         for i, value in enumerate(ranges):
             if value[0] <= drank < value[1]:
                 fractions[i][0] += is_self_hire
                 fractions[i][1] += is_bs_self_hire
-                fractions[i][2] += 1
+                fractions[i][2] += is_phd_self_hire
+                fractions[i][3] += 1
 
     frac_to_put = []
     frac_bs_to_put = []
+    frac_phd_to_put = []
 
     for i, value in sorted(fractions.items()):
 
-        frac = value[0] / value[2]
-        frac_bs = value[1] / value[2]
+        frac = value[0] / value[3]
+        frac_bs = value[1] / value[3]
+        frac_phd = value[2] / value[3]
 
         frac_to_put.append(frac)
         frac_bs_to_put.append(frac_bs)
+        frac_phd_to_put.append(frac_phd)
+
+        title = f"Decile {i + 1}"
+
+        if i == 0:
+            title += " (Lowest prestige)"
+        elif i == 9:
+            title += " (Highest prestige)"
+
+        print(title)
+        print(f"BS: {frac_bs: .3f}\nPhD: {frac_phd: .3f}\nBS+PhD: {frac: .3f}")
 
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
     ax.set_ylim(0, 1)
@@ -1594,19 +1658,20 @@ def _self_hires_v_rank_grouped(ax, g, annotate_bs):
 
 
 if __name__ == '__main__':
+
     lcurve_deg_field()
-    fac_type()
-    fac_type_us_kr()
-    trained_rank_v_placed_rank(average=True, normalize=True)
-    mobility_kr_us()
-    placed_rank_density(range_trained=(0, 20))
-    placed_rank_density(range_trained=(80, 100))
+    # fac_type()
+    # fac_type_us_kr()
+    # trained_rank_v_placed_rank(average=True, normalize=True)
+    # mobility_kr_us()
+    # placed_rank_density(range_trained=(0, 20))
+    # placed_rank_density(range_trained=(80, 100))
     # hires_stat()
     # hires_z()
-    rank_move_grouped(net_type='domestic', inset=True)
-    radg_by_rank(add_reg=True)
-    us_trained_rank_v_dist_from_seoul()
-    rank_v_dist()
-    rank_v_dist_hmap()
-    rank_v_region()
-    self_hires_v_rank_grouped()
+    # rank_move_grouped(net_type='domestic', inset=True)
+    # radg_by_rank(add_reg=True)
+    # us_trained_rank_v_dist_from_seoul()
+    # rank_v_dist()
+    # rank_v_dist_hmap()
+    # rank_v_region()
+    # self_hires_v_rank_grouped()

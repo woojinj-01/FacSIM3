@@ -38,7 +38,7 @@ max_domestic_ranks = {"Biology": 86,
 
 patch_size = pcfg.small_tick_size - 10
 
-doc = 'doc3'
+doc = 'doc4'
 
 
 def lcurve_deg_field(iden=iden_default):
@@ -63,11 +63,11 @@ def lcurve_deg_field(iden=iden_default):
     _lcurve_deg_field(ax, net_g, net_d)
 
     handles = [Patch(facecolor=pcfg.color_ut, alpha=pcfg.alpha, edgecolor='black', linewidth=3),
-               Line2D([0], [0], color='black', linestyle='-', linewidth=4),
                Patch(facecolor=pcfg.color_kt, alpha=pcfg.alpha, edgecolor='black', linewidth=3),
+               Line2D([0], [0], color='black', linestyle='-', linewidth=4),
                Line2D([0], [0], color='black', linestyle='--', linewidth=4)]
 
-    labels = ["Global", "Out-degrees",  "Domestic", "In-degrees"]
+    labels = ["Global", "Domestic", "Out-degrees (faculty production)", "In-degrees (recruitment)"]
 
     fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.9), ncol=2, frameon=False)
     
@@ -162,30 +162,20 @@ def _lcurve_deg_field(ax, g, d):
 
         return gini_in, gini_out
 
-    gini_g_in, gini_g_out = draw_lcurve(g, pcfg.color_ut)
-    gini_d_in, gini_d_out = draw_lcurve(d, pcfg.color_kt)
+    draw_lcurve(g, pcfg.color_ut)
+    draw_lcurve(d, pcfg.color_kt)
 
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
 
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
+    ax.tick_params(axis='x', which='major', pad=15)
 
     ax.set_xticks(np.arange(0, 1.1, 0.25))
     ax.set_yticks(np.arange(0, 1.1, 0.25))
 
     ax.plot([0, 1], [0, 1], c='black', alpha=pcfg.alpha)
 
-    label_g = f'<Global>\nGini (out-deg): {gini_g_out:.2f}\nGini (in-deg): {gini_g_in:.2f}'
-    label_d = f'<Domestic>\nGini (out-deg): {gini_d_out:.2f}\nGini (in-deg): {gini_d_in:.2f}'
-
-    label_to_put = '\n'.join([label_g, label_d])
-
-    ax.text(0.95, 0.05,
-                label_to_put,
-                verticalalignment='bottom', horizontalalignment='right',
-                transform=ax.transAxes,
-                fontsize=pcfg.stat_size, bbox=dict(facecolor='white', alpha=0.8))
-    
 
 def fac_type():
 
@@ -535,9 +525,7 @@ def mobility_kr_us(normalize=True, iden=iden_default):
 
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
 
-    unit = 'Fraction' if normalize else 'Number'
-
-    ylabel = f'{unit} of hires'
+    ylabel = 'Fraction' if normalize else 'Number'
 
     # axs[1].set_xlabel(xlabel, fontsize=pcfg.xlabel_size)
     # fig.supxlabel(xlabel, fontsize=pcfg.xlabel_size)
@@ -1182,8 +1170,9 @@ def us_trained_rank_v_dist_from_seoul(cleaning='raw', normalize=True, to_exclude
     ax = fig.add_axes([0.2, 0.2, 0.6, 0.6])
 
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
+    ax.tick_params(axis='x', which='major', pad=15)
 
-    xlabel = 'Distance to Seoul (km)'
+    xlabel = 'Distance from Seoul (km)'
 
     if cleaning == 'raw':
         ylabel = r"$\pi_{trained}$"
@@ -1196,7 +1185,7 @@ def us_trained_rank_v_dist_from_seoul(cleaning='raw', normalize=True, to_exclude
     ax.set_ylabel(ylabel, fontsize=pcfg.xlabel_size)
 
     divider = make_axes_locatable(ax)
-    ax_histx = divider.append_axes("top", 1.2, pad=0.1, sharex=ax)
+    ax_histx = divider.append_axes("top", 2.5, pad=0.1, sharex=ax)
 
     _us_trained_rank_v_dist_from_seoul(ax, ax_histx, net, cleaning, normalize, to_exclude)
     _us_trained_rank_v_dist_from_seoul(ax, ax_histx, net, cleaning, normalize, to_exclude, fac_type='ktkp')
@@ -1309,9 +1298,10 @@ def _us_trained_rank_v_dist_from_seoul(ax, ax_histx, g, cleaning, normalize, to_
 
     sns.kdeplot(x=career_years, ax=ax_histx, fill=True, color=color, alpha=0.2)
 
+    ax_histx.yaxis.tick_right()
     ax_histx.tick_params(axis='x', which='both', bottom=False, top=False, labelsize=0)
-    ax_histx.tick_params(axis='y', which='both', left=False, right=False, labelsize=0)
-    ax_histx.set_yticks([])
+    ax_histx.tick_params(axis='y', which='both', left=False, right=False, labelsize=30)
+    ax_histx.set_yticks(np.arange(0, 0.016, 0.005))
     ax_histx.set_ylabel('')
 
 
@@ -1329,7 +1319,7 @@ def rank_v_dist(iden=iden_default):
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
 
     ylabel = r"$\pi_{KR}$"
-    xlabel = 'Distance to Seoul (km)'
+    xlabel = 'Distance from Seoul (km)'
 
     ax.set_xlabel(xlabel, fontsize=pcfg.xlabel_size)
     ax.set_ylabel(ylabel, fontsize=pcfg.xlabel_size)
@@ -1409,7 +1399,7 @@ def rank_v_dist_hmap(iden=iden_default):
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
 
     ylabel = r"$\pi_{KR}$"
-    xlabel = 'Distance to Seoul (km)'
+    xlabel = 'Distance from Seoul (km)'
 
     ax.set_xlabel(xlabel, fontsize=pcfg.xlabel_size)
     ax.set_ylabel(ylabel, fontsize=pcfg.xlabel_size)
@@ -1659,11 +1649,11 @@ def _self_hires_v_rank_grouped(ax, g, annotate_bs):
 
 if __name__ == '__main__':
 
-    lcurve_deg_field()
+    # lcurve_deg_field()
     # fac_type()
     # fac_type_us_kr()
     # trained_rank_v_placed_rank(average=True, normalize=True)
-    # mobility_kr_us()
+    mobility_kr_us()
     # placed_rank_density(range_trained=(0, 20))
     # placed_rank_density(range_trained=(80, 100))
     # hires_stat()

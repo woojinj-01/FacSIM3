@@ -1,8 +1,10 @@
 fig_xsize = 15
 fig_ysize = 15
 dpi = 200
-alpha = 0.5
-# alpha = 1
+# alpha = 0.5
+alpha = 1
+
+alpha_as_hex = 80
 
 font_size = 26
 xlabel_size = 45
@@ -24,12 +26,15 @@ colors = {"KR_Biology": colors_bio,
           "KR_ComputerScience": colors_cs,
           "KR_Physics": colors_phy}
 
-COLOR_KR_TRAINED = 'tomato'
-COLOR_US_TRAINED = 'mediumblue'
-COLOR_ELSE_TRAINED = 'grey'
+COLOR_KR_TRAINED = '#FF6347'
+COLOR_US_TRAINED = '#0000CD'
+COLOR_ELSE_TRAINED = '#808080'
 
 COLOR_GLOBAL_NET = '#0294A5'
+
 COLOR_DOMESTIC_NET = '#C1403D'
+COLOR_DOMESTIC_NET_WARMER = '#E57324'
+COLOR_DOMESTIC_NET_COOLER = '#7B3F61'
 
 COLOR_UP_HIRE = '#D96B0C'
 COLOR_SE_HIRE = '#D59B2D'

@@ -53,7 +53,7 @@ def rgba_from_hex(hex_color, opacity=pcfg.alpha):
     return f'{hex_color}{alpha_hex}'
 
 
-def lcurve_deg_field(iden=iden_default):
+def deprecated_lcurve_deg_field(iden=iden_default):
 
     net_g = construct_network(net_type='global').get(iden)
     net_d = construct_network(net_type='domestic').get(iden)
@@ -72,7 +72,7 @@ def lcurve_deg_field(iden=iden_default):
     ax.set_xlabel(xlabel, fontsize=pcfg.xlabel_size)
     ax.set_ylabel(ylabel, fontsize=pcfg.xlabel_size)
 
-    _lcurve_deg_field(ax, net_g, net_d)
+    _deprecated_lcurve_deg_field(ax, net_g, net_d)
 
     handles = [Patch(facecolor=rgba_from_hex(pcfg.COLOR_GLOBAL_NET), 
                      edgecolor='black', linewidth=3),
@@ -85,10 +85,10 @@ def lcurve_deg_field(iden=iden_default):
 
     fig.legend(handles, labels, loc='lower right', bbox_to_anchor=(0.8, 0.2), ncol=1, frameon=False)
     
-    plt.savefig(fig_path(f"./{doc}/lcurve_deg_{iden}"))
+    plt.savefig(fig_path(f"./{doc}/deprecated_lcurve_deg_{iden}"))
     
 
-def _lcurve_deg_field(ax, g, d):
+def _deprecated_lcurve_deg_field(ax, g, d):
 
     def draw_lcurve(g_to_draw, c, analyze=False):
     
@@ -190,6 +190,160 @@ def _lcurve_deg_field(ax, g, d):
     ax.set_yticks(ticks)
 
     ax.plot([0, 1], [0, 1], c='black', alpha=pcfg.alpha)
+
+
+def lcurve_deg_field(iden=iden_default, draw='all'):
+
+    net_g = construct_network(net_type='global').get(iden)
+    net_d = construct_network(net_type='domestic').get(iden)
+
+    if any(net is None for net in [net_g, net_d]):
+        return
+
+    plt.rc('font', **pcfg.fonts)
+    fig = plt.figure(figsize=(pcfg.fig_xsize + 2, pcfg.fig_ysize + 2), dpi=pcfg.dpi)
+
+    ax = fig.add_axes([0.2, 0.2, 0.6, 0.6])
+
+    xlabel = 'Cumulative ratio of institutions (%)'
+    ylabel = 'Cumulative ratio of degrees (%)'
+
+    ax.set_xlabel(xlabel, fontsize=pcfg.xlabel_size)
+    ax.set_ylabel(ylabel, fontsize=pcfg.ylabel_size)
+
+    _lcurve_deg_field(ax, net_g, net_d, draw=draw)
+
+    handles = [Patch(facecolor=pcfg.COLOR_GLOBAL_NET,  edgecolor='black', linewidth=3),
+               Patch(facecolor=pcfg.COLOR_DOMESTIC_NET,  edgecolor='black', linewidth=3),
+               Line2D([0], [0], color='black', linestyle='-', linewidth=4),
+               Line2D([0], [0], color='black', linestyle='--', linewidth=4)]
+
+    labels = ["Global", "Domestic", "Out-degrees (production)", "In-degrees (recruitment)"]
+
+    if draw == 'g':
+        handles.pop(1)
+        labels.pop(1)
+
+    elif draw == 'd':
+        handles.pop(0)
+        labels.pop(0)
+
+    fig.legend(handles, labels, loc='lower right', bbox_to_anchor=(0.8, 0.2), ncol=1, frameon=False)
+    
+    plt.savefig(fig_path(f"./{doc}/lcurve_deg_{iden}_{draw}"))
+
+
+def _lcurve_deg_field(ax, g, d, draw='g'): # or draw = 'd' , 'all' 
+
+    def draw_lcurve(g_to_draw, c, analyze=False):
+    
+        indegs = [deg[1] for deg in g_to_draw.in_degree()]
+        outdegs = [deg[1] for deg in g_to_draw.out_degree()]
+
+        indegs.sort(reverse=True)
+        outdegs.sort(reverse=True)
+
+        xco = []
+        yco_in = []
+        yco_out = []
+
+        x = 0
+        y_in = 0
+        y_out = 0
+
+        xco.append(x)
+        yco_in.append(y_in)
+        yco_out.append(y_out)
+
+        for deg_in, deg_out in zip(indegs, outdegs):
+
+            x += 1
+            y_in += deg_in
+            y_out += deg_out
+
+            xco.append(x)
+            yco_in.append(y_in)
+            yco_out.append(y_out)
+
+        xco = np.array(xco) / max(xco)
+        yco_in = np.array(yco_in) / max(yco_in)
+        yco_out = np.array(yco_out) / max(yco_out)
+
+        area_in = np.trapz(yco_in, xco)
+        gini_in = (area_in - 0.5) / 0.5
+
+        area_out = np.trapz(yco_out, xco)
+        gini_out = (area_out - 0.5) / 0.5
+
+        ax.tick_params(axis='both', which='major', labelsize=13)
+
+        ax.plot(xco, yco_out, c=c, linewidth=6)
+        ax.plot(xco, yco_in,  c=c, linewidth=6, linestyle='--')
+
+        if analyze:
+
+            print('[Out-degrees]')
+
+            for x, y in zip(xco, yco_out):
+
+                if y >= 0.8:
+                    print(f"{prev_x} of institutions produce {prev_y} of total faculty")
+                    print(f"{x} of institutions produce {y} of total faculty")
+
+                    grad = (y - prev_y) / (x - prev_x)
+
+                    x_estimate = (0.8 - prev_y) / grad + prev_x
+
+                    print(x_estimate)
+                    break
+
+                prev_x = x
+                prev_y = y
+
+            print('[In-degrees]')
+
+            for x, y in zip(xco, yco_in):
+
+                if y >= 0.8:
+                    print(f"{prev_x} of institutions hire {prev_y} of total faculty")
+                    print(f"{x} of institutions hire {y} of total faculty")
+
+                    grad = (y - prev_y) / (x - prev_x)
+
+                    x_estimate = (0.8 - prev_y) / grad + prev_x
+
+                    print(x_estimate)
+                    break
+
+                prev_x = x
+                prev_y = y
+
+        return gini_in, gini_out
+
+    if draw == 'g': 
+        draw_lcurve(g, pcfg.COLOR_GLOBAL_NET)
+
+    elif draw == 'd': 
+        draw_lcurve(d, pcfg.COLOR_DOMESTIC_NET)
+
+    elif draw == 'all': 
+        draw_lcurve(g, pcfg.COLOR_GLOBAL_NET)
+        draw_lcurve(d, pcfg.COLOR_DOMESTIC_NET)
+
+    ax.set_xlim(-0.001, 1.001)
+    ax.set_ylim(-0.001, 1.001)
+
+    ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
+    ax.tick_params(axis='x', which='major', pad=15)
+
+    ax.set_xticks(np.arange(0, 1.001, 0.2))
+    ax.set_yticks(np.arange(0, 1.001, 0.2))
+    ax.set_xticklabels(['0', '20', '40', '60', '80', '100'], 
+                       fontsize=pcfg.tick_size)
+    ax.set_yticklabels(['0', '20', '40', '60', '80', '100'], 
+                       fontsize=pcfg.tick_size)
+    
+    ax.plot([-0.001, 1.001], [-0.001, 1.001], c='black', alpha=pcfg.alpha)
 
 
 def fac_type():
@@ -561,7 +715,8 @@ def _trained_rank_v_placed_rank(ax, g, dec, average, normalize):
         
         x_vals = np.array(ax.get_xlim())
         y_vals = slope_ut * x_vals + intercept_ut
-        ax.plot(x_vals, y_vals, color=pcfg.COLOR_US_TRAINED, linestyle='-', linewidth=2)
+        ax.plot(x_vals, y_vals, color=pcfg.COLOR_US_TRAINED, 
+                linestyle='-', linewidth=3)
 
         placed_ranks = np.array(placed_ranks_kt)
         trained_ranks = np.array(trained_ranks_kt)
@@ -584,7 +739,8 @@ def _trained_rank_v_placed_rank(ax, g, dec, average, normalize):
         
         x_vals = np.array(ax.get_xlim())
         y_vals = slope_kt * x_vals + intercept_kt
-        ax.plot(x_vals, y_vals, color=pcfg.COLOR_KR_TRAINED, linestyle='-', linewidth=2)
+        ax.plot(x_vals, y_vals, color=pcfg.COLOR_KR_TRAINED, 
+                linestyle='-', linewidth=3)
 
         # label_ut = f'<US-trained faculty>\n{eq_ut}'
         # label_kt = f'<KR-trained faculty>\n{eq_kt}'
@@ -599,31 +755,15 @@ def _trained_rank_v_placed_rank(ax, g, dec, average, normalize):
 
         if average:
 
-            # ax.scatter(placed_ranks_ut, trained_ranks_ut, marker='o',
-            #            alpha=pcfg.alpha, s=150, c=pcfg.COLOR_US_TRAINED,
-            #            edgecolor='black')
-    
-            # ax.scatter(placed_ranks_kt, trained_ranks_kt, marker='o',
-            #            alpha=pcfg.alpha, s=150, c=pcfg.COLOR_KR_TRAINED,
-            #            edgecolor='black')
+            alpha_to_use = pcfg.alpha
 
-            # ax.fill_between(placed_ranks_ut_std_sorted,
-            #                 np.array(sorted(trained_ranks_ut)) + trained_ranks_ut_std_sorted,
-            #                 np.array(sorted(trained_ranks_ut)) - trained_ranks_ut_std_sorted,
-            #                 alpha=pcfg.alpha - 0.2, color='grey')
-        
-            # ax.fill_between(placed_ranks_kt_std_sorted,
-            #                 np.array(sorted(trained_ranks_kt)) + trained_ranks_kt_std_sorted,
-            #                 np.array(sorted(trained_ranks_kt)) - trained_ranks_kt_std_sorted,
-            #                 alpha=pcfg.alpha - 0.2, color='grey')
-            
             ax.errorbar(placed_ranks_ut, trained_ranks_ut,
                         yerr=trained_ranks_ut_std_sorted,
                         fmt=pcfg.MARKER_US_TRAINED, 
                         markersize=15, markeredgecolor='black', 
                         markeredgewidth=2,
                         elinewidth=3, capsize=5, ecolor='grey',
-                        c=rgba_from_hex(pcfg.COLOR_US_TRAINED))
+                        c=rgba_from_hex(pcfg.COLOR_US_TRAINED, alpha_to_use))
     
             ax.errorbar(placed_ranks_kt, trained_ranks_kt,
                         yerr=trained_ranks_kt_std_sorted,
@@ -631,7 +771,7 @@ def _trained_rank_v_placed_rank(ax, g, dec, average, normalize):
                         markersize=15, markeredgecolor='black',
                         markeredgewidth=2,
                         elinewidth=3, capsize=5, ecolor='grey',
-                        c=rgba_from_hex(pcfg.COLOR_KR_TRAINED))
+                        c=rgba_from_hex(pcfg.COLOR_KR_TRAINED, alpha_to_use))
             
             return eq_ut, eq_kt
             
@@ -750,9 +890,9 @@ def placed_rank_density(range_trained=(0, 20), iden=iden_default):
     ax.set_xlabel("Rank group", fontsize=pcfg.xlabel_size)
     ax.set_ylabel("Counts", fontsize=pcfg.ylabel_size)
 
-    modes = ['utkp', 'ktkp']
+    modes = ['utkp', 'ktkp', ]
     styles = ['-', '-']
-    colors = ['mediumblue', 'tomato']
+    colors = [pcfg.COLOR_US_TRAINED, pcfg.COLOR_KR_TRAINED]
 
     for i in range(len(modes)):
 
@@ -764,10 +904,14 @@ def placed_rank_density(range_trained=(0, 20), iden=iden_default):
 
     # ax2.set_ylabel("Counts", fontsize=pcfg.ylabel_size)
 
-    handles = [Patch(facecolor=pcfg.COLOR_US_TRAINED, alpha=pcfg.alpha, edgecolor='black', linewidth=3),
-               Line2D([0], [0], color=pcfg.COLOR_US_TRAINED, linestyle='-', linewidth=4),
-               Patch(facecolor=pcfg.COLOR_KR_TRAINED, alpha=pcfg.alpha, edgecolor='black', linewidth=3),
-               Line2D([0], [0], color=pcfg.COLOR_KR_TRAINED, linestyle='-', linewidth=4)]
+    handles = [Patch(facecolor=rgba_from_hex(pcfg.COLOR_US_TRAINED, opacity=0.5),
+                     edgecolor='black', linewidth=3),
+               Line2D([0], [0], color=pcfg.COLOR_US_TRAINED, 
+                      linestyle='-', linewidth=4),
+               Patch(facecolor=rgba_from_hex(pcfg.COLOR_KR_TRAINED, opacity=0.5),
+                     edgecolor='black', linewidth=3),
+               Line2D([0], [0], color=pcfg.COLOR_KR_TRAINED, 
+                      linestyle='-', linewidth=4)]
 
     labels = ["US-trained faculty (count)", "US-trained faculty (density)",
               "KR-trained faculty (count)", "KR-trained faculty (density)"]
@@ -785,6 +929,8 @@ def _placed_rank_density(ax, g, range_trained, mode, ls=None, c=None):
     abbrev = qsi.get_abbrev(iden)
 
     placed_ranks = []
+
+    alpha_to_use = 0.5
 
     match mode:
         case 'utkp':
@@ -897,8 +1043,8 @@ def _placed_rank_density(ax, g, range_trained, mode, ls=None, c=None):
     if ls is None:
         ls = '--'
 
-    counts, bins, _ = ax.hist(data, color=c, alpha=pcfg.alpha,
-                            edgecolor='black', linewidth=3, bins=bins)
+    counts, bins, _ = ax.hist(data, color=rgba_from_hex(c, alpha_to_use),
+                              edgecolor='black', linewidth=3, bins=bins)
     
     bin_centers = 0.5 * (bins[:-1] + bins[1:])
     
@@ -971,72 +1117,6 @@ def hires_stat(net_type='domestic', iden=iden_default, ax_export=None):
         plt.savefig(fig_path(f'./{doc}/hires_stat_{net_type}_{iden}'))
 
         plt.clf()
-
-
-def hires_z_origin(net_type='domestic', iden=iden_default):
-
-    net = construct_network(net_type=net_type, data=True).get(iden)
-
-    if net is None:
-        return
-    
-    from analysis.hires import _calc_hires_z, _calc_hires
-
-    stat = _calc_hires_z(net, net_type=net_type)
-    stat_net = _calc_hires(net, net_type=net_type)
-
-    print(stat)
-
-    plt.rc('font', **pcfg.fonts)
-    fig = plt.figure(figsize=(pcfg.fig_xsize, pcfg.fig_ysize), dpi=pcfg.dpi)
-    ax = fig.add_axes([0.2, 0.2, 0.6, 0.6])
-
-    plt.gca().spines['top'].set_visible(False)
-    plt.gca().spines['right'].set_visible(False)
-
-    ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
-
-    ax.set_ylabel('Z-scores', fontsize=pcfg.ylabel_size)
-
-    ax.set_ylim(-10, 20)
-    ax.set_yticks(range(-10, 21, 5))
-
-    ax.tick_params(axis='x', which='major', labelsize=pcfg.small_tick_size)
-    ax.tick_params(axis='y', which='major', labelsize=pcfg.tick_size)
-
-    bar_width = 0.2
-    x_pos = 0
-    
-    x_pos_1 = x_pos
-    x_pos_2 = x_pos_1 + bar_width / 2
-    x_pos_3 = x_pos_1 + 2 * bar_width / 2
-
-    ax.set_xticks([x_pos_1, x_pos_2, x_pos_3], ['Down hires', 'Self hires', 'Up hires'])
-
-    do_z = (stat_net['Down'] / stat_net['Total'] - stat['Down'][0]) / stat['Down'][1]
-    se_z = (stat_net['Self'] / stat_net['Total'] - stat['Self'][0]) / stat['Self'][1]
-    up_z = (stat_net['Up'] / stat_net['Total'] - stat['Up'][0]) / stat['Up'][1]
-
-    ax.bar(x_pos_1, do_z, width=bar_width/2, color=pcfg.COLOR_DO_HIRE,
-           alpha=pcfg.alpha, edgecolor='black', linewidth=2)
-    ax.bar(x_pos_2, se_z, width=bar_width/2, color=pcfg.COLOR_SE_HIRE,
-           alpha=pcfg.alpha, edgecolor='black', linewidth=2)
-    ax.bar(x_pos_3, up_z, width=bar_width/2, color=pcfg.COLOR_UP_HIRE,
-           alpha=pcfg.alpha, edgecolor='black', linewidth=2)
-
-    ax.axhline(0, color='black', linewidth=1)
-    ax.tick_params(axis='x')
-
-    handles = [Patch(facecolor=pcfg.COLOR_DO_HIRE, alpha=pcfg.alpha, edgecolor='black', linewidth=3),
-               Patch(facecolor=pcfg.COLOR_SE_HIRE, alpha=pcfg.alpha, edgecolor='black', linewidth=3),
-               Patch(facecolor=pcfg.COLOR_UP_HIRE, alpha=pcfg.alpha, edgecolor='black', linewidth=3)]
-
-    labels = ['Down hires', 'Self hires', 'Up hires']
-
-    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.9), ncol=3, frameon=False)
-    
-    plt.savefig(fig_path(f'./{doc}/hires_z_{net_type}_{iden}'))
-    plt.clf()
 
 
 def hires_z(net_type='domestic', iden=iden_default):
@@ -1167,9 +1247,9 @@ def rank_move_grouped(net_type='domestic', inset=False, iden=iden_default):
     
     handles = [Line2D([0], [0], color=c, linestyle=s, linewidth=4, alpha=pcfg.alpha) for s, c in zip(styles, colors)]
 
-    labels = ["Top 20%", "40%-60%", "Bottom 20%"]
+    labels = ["Top 20%", "40-60%", "Bottom 20%"]
 
-    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.88), ncol=3, frameon=False)
+    fig.legend(handles, labels, loc='lower right', bbox_to_anchor=(0.81, 0.2), ncol=1, frameon=False)
 
     ax.set_xlim(-1, 1)
     ax.set_xticks(np.arange(-1, 1.1, 0.5))
@@ -1306,7 +1386,7 @@ def _radg_by_rank(ax, g, dist_type, ver, add_reg):
 
     ax.scatter(xco, yco, marker='o',
                s=150, c=rgba_from_hex(pcfg.COLOR_DOMESTIC_NET),
-               edgecolor='black', linewidths=3)
+               edgecolor='black', linewidths=2)
     
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
 
@@ -1392,11 +1472,13 @@ def us_trained_rank_v_dist_from_seoul(cleaning='raw', normalize=True, to_exclude
     _us_trained_rank_v_dist_from_seoul(ax, ax_histx, net, cleaning, normalize, to_exclude)
     _us_trained_rank_v_dist_from_seoul(ax, ax_histx, net, cleaning, normalize, to_exclude, fac_type='ktkp')
     
-    handles = [Line2D([0], [0], marker=pcfg.MARKER_US_TRAINED, color='black', alpha=pcfg.alpha, 
-                      markerfacecolor=pcfg.COLOR_US_TRAINED, markersize=20, 
+    handles = [Line2D([0], [0], marker=pcfg.MARKER_US_TRAINED, color='black',
+                      markerfacecolor=rgba_from_hex(pcfg.COLOR_US_TRAINED, 0.5), markersize=20, 
+                      markeredgecolor='black', markeredgewidth=2,
                       linestyle='None'),
-               Line2D([0], [0], marker=pcfg.MARKER_KR_TRAINED, color='black', alpha=pcfg.alpha, 
-                      markerfacecolor=pcfg.COLOR_KR_TRAINED, markersize=20, 
+               Line2D([0], [0], marker=pcfg.MARKER_KR_TRAINED, color='black',
+                      markerfacecolor=rgba_from_hex(pcfg.COLOR_KR_TRAINED, 0.5), markersize=20, 
+                      markeredgecolor='black', markeredgewidth=2,
                       linestyle='None')]
 
     labels = ["US-trained faculty", "KR-trained faculty"]
@@ -1420,6 +1502,8 @@ def _us_trained_rank_v_dist_from_seoul(ax, ax_histx, g, cleaning, normalize, to_
 
     trained_ranks = []
     career_years = []
+
+    alpha_to_use = 0.5
 
     exclude_ist = True if 'ist' in to_exclude else False
     exclude_flagship = True if 'flagship' in to_exclude else False
@@ -1503,15 +1587,17 @@ def _us_trained_rank_v_dist_from_seoul(ax, ax_histx, g, cleaning, normalize, to_
 
     ax.invert_yaxis()
 
-    ax.scatter(career_years, trained_ranks, marker=mtype,
-                alpha=pcfg.alpha, s=150, c=color,
-                edgecolor='black')
+    ax.scatter(career_years, trained_ranks, marker=mtype, 
+               s=150, c=rgba_from_hex(color, alpha_to_use), 
+               edgecolor='black', linewidths=2)
 
-    sns.kdeplot(x=career_years, ax=ax_histx, fill=True, color=color, alpha=0.2)
+    sns.kdeplot(x=career_years, ax=ax_histx, fill=True, color=color, alpha=0.5, linewidth=3)
 
     ax_histx.yaxis.tick_right()
-    ax_histx.tick_params(axis='x', which='both', bottom=False, top=False, labelsize=0)
-    ax_histx.tick_params(axis='y', which='both', left=False, right=False, labelsize=30)
+    ax_histx.tick_params(axis='x', which='both', 
+                         bottom=False, top=False, labelsize=0)
+    ax_histx.tick_params(axis='y', which='both', 
+                         left=False, right=False, labelsize=30)
     # ax_histx.set_yticks(np.arange(0, 0.016, 0.005))
     ax_histx.set_yticks([])
     ax_histx.set_ylabel('')
@@ -1707,7 +1793,7 @@ def _rank_v_dist_hmap(ax, g, cbar_ax):
     abbrev = qsi.get_abbrev(iden)
     max_rank = max_domestic_ranks[iden.split('_')[1]]
 
-    rgb_cs = (0.9568627450980393, 0.41568627450980394, 0.3058823529411765)
+    rgb_to_use = (0.7568627451, 0.2509803922, 0.2392156863)
 
     ranks = []
     dists = []
@@ -1728,7 +1814,7 @@ def _rank_v_dist_hmap(ax, g, cbar_ax):
 
     heatmap, xedges, yedges = np.histogram2d(dists, ranks, bins=[10, 10], range=[[0, 500], [0, max_rank + 1]])
 
-    colors = [(1, 1, 1), rgb_cs]  # Red gradient
+    colors = [(1, 1, 1), rgb_to_use]  # Red gradient
     custom_cmap = mcolors.LinearSegmentedColormap.from_list('custom_cmap', colors, N=256)
 
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
@@ -1836,8 +1922,8 @@ def self_hires_v_rank_grouped(net_type='domestic', annotate_bs=True, iden=iden_d
 
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
 
-    ax.set_xlabel("Rank decile", fontsize=pcfg.xlabel_size)
-    ax.set_ylabel("Fraction of self-hires", fontsize=pcfg.xlabel_size)
+    ax.set_xlabel("Rank group", fontsize=pcfg.xlabel_size)
+    ax.set_ylabel("Fraction of self-hires", fontsize=pcfg.xlabel_size, labelpad=20)
 
     _self_hires_v_rank_grouped(ax, net, annotate_bs)
 
@@ -1845,12 +1931,16 @@ def self_hires_v_rank_grouped(net_type='domestic', annotate_bs=True, iden=iden_d
 
         from matplotlib.lines import Line2D
 
-        handles = [Line2D([0], [0], color='red', marker='s', markersize=13, alpha=pcfg.alpha)]
-        labels = ["Fraction of self-hiring own bachelor's graduates"]
+        legend_size = 30
 
-        fig.legend(handles, labels, loc='upper center',
-                   bbox_to_anchor=(0.5, 0.9), ncol=1, frameon=False,
-                   fontsize=pcfg.legend_size)
+        handles = [Line2D([0], [0], color='black', marker='s', linewidth=3,
+                          markersize=15, markeredgewidth=4, markerfacecolor='#D3D3D3',
+                          markeredgecolor='black')]
+        labels = ["Fraction of self-hiring\nown bachelor's graduates"]
+
+        fig.legend(handles, labels, loc='upper right',
+                   bbox_to_anchor=(0.8, 0.8), ncol=1, frameon=False,
+                   fontsize=legend_size)
 
     plt.savefig(fig_path(f"./{doc}/self_hires_v_rank_grouped_{net_type}_annotate({annotate_bs})_{iden}"))
 
@@ -1920,26 +2010,27 @@ def _self_hires_v_rank_grouped(ax, g, annotate_bs):
         elif i == 9:
             title += " (Highest prestige)"
 
-        print(title)
-        print(f"BS: {frac_bs: .3f}\nPhD: {frac_phd: .3f}\nBS+PhD: {frac: .3f}")
+        print(f"[{title}] BS: {frac_bs: .3f} PhD: {frac_phd: .3f} BS+PhD: {frac: .3f}")
 
     ax.tick_params(axis='both', which='major', labelsize=pcfg.tick_size)
     ax.set_ylim(0, 1)
     ax.set_yticks(np.arange(0, 1.1, 0.25))
 
-    categories = [f"{i + 1}" for i in range(len(ranges))]
+    categories = [f"{i}" for i in range(len(ranges), 0, -1)]
 
     ax.bar(categories, frac_to_put, alpha=pcfg.alpha,
-           color=pcfg.colors[iden][1], edgecolor='black', linewidth=2)
+           color=pcfg.COLOR_DOMESTIC_NET, edgecolor='black', linewidth=3)
     
     if annotate_bs:
-        ax.plot(categories, frac_bs_to_put, c='red', marker='s',
-                markersize=13, alpha=pcfg.alpha)
+        ax.plot(categories, frac_bs_to_put, c='black', linewidth=3,
+                marker='s', markersize=15, markeredgewidth=4,
+                markerfacecolor='#D3D3D3', markeredgecolor='black')
 
 
 if __name__ == '__main__':
 
-    # lcurve_deg_field()
+    lcurve_deg_field(draw='g')
+    lcurve_deg_field(draw='d')
     # fac_type()
     # fac_type_us_kr()
     # trained_rank_v_placed_rank(average=True, normalize=True)

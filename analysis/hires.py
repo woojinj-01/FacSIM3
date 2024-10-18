@@ -77,7 +77,7 @@ def _calc_hires_z(g, net_type):
     from parse.queries_integration import get_abbrev
     from networks.randomize import randomize
 
-    trial = 10
+    trial = 1000
 
     iden = g.name
     randoms = randomize(g, times=trial)

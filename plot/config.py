@@ -7,12 +7,12 @@ alpha = 1
 alpha_as_hex = 80
 
 font_size = 26
-xlabel_size = 45
-ylabel_size = 45
-tick_size = 50
-small_tick_size = 40
+xlabel_size = 40
+ylabel_size = 40
+tick_size = 35
+small_tick_size = 30
 stat_size = 35
-legend_size = 35
+legend_size = 30
 pannel_size = legend_size
 
 

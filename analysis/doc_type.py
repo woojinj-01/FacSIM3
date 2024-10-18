@@ -214,9 +214,6 @@ def _calc_doc_type_per_inst(g):
 
     return stats
 
-
-print(calc_records_total())
-
         
 
 

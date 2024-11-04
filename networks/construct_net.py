@@ -97,21 +97,25 @@ def construct_network(net_type='global', data=True):
 if __name__ == "__main__":
     net_dict = construct_network(data=True, net_type='domestic')
 
+    print('=== Domestic networks ===')
+
     for iden, net in net_dict.items():
 
         print(iden)
-        print(net.number_of_nodes())
-        print(net.number_of_edges())
+        print(f"Nodes: {net.number_of_nodes()}")
+        print(f"Edges: {net.number_of_edges()}")
 
         # print(net.edges[5, 5, 0])
 
     net_dict = construct_network(data=True)
 
+    print('=== Global networks ===')
+
     for iden, net in net_dict.items():
 
         print(iden)
-        print(net.number_of_nodes())
-        print(net.number_of_edges())
+        print(f"Nodes: {net.number_of_nodes()}")
+        print(f"Edges: {net.number_of_edges()}")
 
         # print(net.edges[5, 5, 0])
 

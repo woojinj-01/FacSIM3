@@ -102,11 +102,11 @@ def extract_rank_list(g, net_type, mode='extract'):
 
 if __name__ == '__main__':
 
-    extract_node_edge_list_overall(data=False)
+    # extract_node_edge_list_overall(data=False)
     extract_node_edge_list_overall(data=True)
     extract_rank_list_overall()
 
-    extract_node_edge_list_overall(data=False, net_type='domestic')
+    # extract_node_edge_list_overall(data=False, net_type='domestic')
     extract_node_edge_list_overall(data=True, net_type='domestic')
     extract_rank_list_overall(net_type='domestic')
 

@@ -130,8 +130,97 @@ def _calc_hires_z(g, net_type):
     return mean_and_std
 
 
+def calc_duration(net_type='domestic'):
+
+    nets = construct_network(net_type=net_type)
+
+    results = {}
+
+    for iden in identifiers:
+
+        g = nets[iden] 
+        results[iden] = _calc_duration(g, net_type)
+
+    return results
+
+
+def _calc_duration(g, net_type):
+
+    x = []
+    y = []
+
+    for src_id, dst_id, data in g.edges(data=True):
+
+        i = data['which_job_is_ap']
+
+        year_phd = data["phd_end_year"]
+        year_hired = data[f"job{i}_start_year"]
+
+        if any(not isinstance(y, int) or y == 0 for y in [year_phd, year_hired]):
+            continue
+
+        duration = year_hired - year_phd
+
+        x.append(year_phd)
+        y.append(duration)
+
+    return x, y
+
+
+def calc_duration_by_dec(net_type='domestic'):
+
+    nets = construct_network(net_type=net_type)
+
+    results = {}
+
+    for iden in identifiers:
+
+        g = nets[iden] 
+        results[iden] = _calc_duration_by_dec(g, net_type)
+
+    return results
+
+
+def _calc_duration_by_dec(g, net_type):
+
+    data = {'Total': [],
+            '-1999': [],
+            '2000s': [],
+            '2010s': []}
+
+    for _, _, d in g.edges(data=True):
+
+        i = d['which_job_is_ap']
+
+        year_phd = d["phd_end_year"]
+        year_hired = d[f"job{i}_start_year"]
+
+        if any(not isinstance(y, int) or y == 0 for y in [year_phd, year_hired]):
+            continue
+
+        duration = year_hired - year_phd
+
+        if year_phd <= 1999:
+            data['-1999'].append(duration)
+        elif 2000 <= year_phd < 2010:
+            data['2000s'].append(duration)
+        else:
+            data['2010s'].append(duration)
+
+        data['Total'].append(duration)
+
+    for k, v in data.items():
+        data[k] = np.mean(v)
+
+    print(data)
+    
+    return data
+
+
 if __name__ == '__main__':
-    print(calc_hires())
+    calc_duration_by_dec()
+
+
 
     
 

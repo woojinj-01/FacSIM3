@@ -12,7 +12,7 @@ ylabel_size = 40
 tick_size = 35
 small_tick_size = 30
 stat_size = 35
-legend_size = 30
+legend_size = 25
 pannel_size = legend_size
 
 

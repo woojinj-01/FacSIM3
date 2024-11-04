@@ -214,6 +214,7 @@ def GET_MAX_DRANK(iden):
 
     return query
 
+
 GET_NODEID_BY_NAME = '''
     SELECT id
     FROM Nodes
